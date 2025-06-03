@@ -1,0 +1,101 @@
+# ------------------------------------------------------------------------------
+# Conduit - Obscura
+#
+# This stack defines the following services:
+# - gluetun
+# - qbittorrent
+# ------------------------------------------------------------------------------
+name: conduit_obscura
+services:
+
+  # ----------------------------------------------------------------------------
+  # Gluetun
+  #
+  # VPN client in a thin Docker container for multiple VPN providers, written in
+  # Go, and using OpenVPN or Wireguard, DNS over TLS, with a few proxy servers 
+  # built-in.
+  #
+  # Currently using 3.39.1 due to a regression in 3.40.0 that affects port
+  # forwarding stability.
+  # See: https://github.com/qdm12/gluetun/issues/2812
+  #
+  #
+  # Source: https://github.com/qdm12/gluetun
+  # ----------------------------------------------------------------------------
+  gluetun:
+    image: qmcgaw/gluetun:v3.39.1
+
+    # -------------------------------------------------------------------------
+    # Environment Variables
+    # -------------------------------------------------------------------------
+    env_file:
+      - path: ./gluetun.env
+
+    # -------------------------------------------------------------------------
+    # Network Management
+    #
+    # Exposed Ports:
+    # - 9191 (qBittorrent is exposed here)
+    # -------------------------------------------------------------------------
+    ports:
+      - "${TORRENT_PORT}:${TORRENT_PORT}"
+      - "${TORRENT_PORT}:${TORRENT_PORT}/udp"
+    dns:
+      - ${GLUETUN_DNS}
+
+    # -------------------------------------------------------------------------
+    # Volumes
+    # -------------------------------------------------------------------------
+    volumes:
+      - ${GLUETUN_DATA_DIR}/data:/gluetun
+
+    # -------------------------------------------------------------------------
+    # System Management
+    # -------------------------------------------------------------------------
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    security_opt:
+      - apparmor:docker-default
+
+  # ----------------------------------------------------------------------------
+  # qBitTorrent
+  #
+  # A Qbittorrent container, brought to you by LinuxServer.io.
+  #
+  # Source: https://hub.docker.com/r/linuxserver/qbittorrent
+  # ----------------------------------------------------------------------------
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+
+    # -------------------------------------------------------------------------
+    # Environment Variables
+    # -------------------------------------------------------------------------
+    env_file:
+      - path: ./qbittorrent.env
+    environment:
+      - PUID=${QBITTORRENT_PUID:-1000}
+      - PGID=${QBITTORRENT_PGID:-1000}
+
+    # -------------------------------------------------------------------------
+    # Volumes
+    # -------------------------------------------------------------------------
+    volumes:
+      - ${QBITTORRENT_DATA_DIR}/config:/config
+      - ${QBITTORRENT_TORRENT_DIR}:/data/torrents
+
+    # -------------------------------------------------------------------------
+    # System Management
+    # -------------------------------------------------------------------------
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    security_opt:
+      - apparmor:docker-default
