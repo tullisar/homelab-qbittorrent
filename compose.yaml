@@ -37,11 +37,9 @@ services:
     # Exposed Ports:
     # - 9191 (qBittorrent is exposed here)
     # -------------------------------------------------------------------------
-    ports:
-      - "${TORRENT_PORT}:${TORRENT_PORT}"
-      - "${TORRENT_PORT}:${TORRENT_PORT}/udp"
-    dns:
-      - ${GLUETUN_DNS}
+    # ports:
+    #   - "${TORRENT_PORT}:${TORRENT_PORT}"
+    #   - "${TORRENT_PORT}:${TORRENT_PORT}/udp"
 
     # -------------------------------------------------------------------------
     # Volumes
